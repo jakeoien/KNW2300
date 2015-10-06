@@ -5,6 +5,17 @@ import java.util.Scanner;
 
 public class RobotTester 
 {
+    final private static int PING_PIN = 12;
+    
+    public static void getPing()
+    {
+        for (int x=0; x < 10; ++x) 
+            { 
+		//Read the ping sensor value, which is connected to pin 12 
+                System.out.println("Response: " + robot.getPing(PING_PIN) + " cm"); 
+		robot.sleep(300); 
+            } 
+    }
     public static int getThermistorReading() 
     {
         int sum = 0;
@@ -34,27 +45,32 @@ public class RobotTester
     
     public static void moveRobot3Meters()
     {
-        robot.attachMotor(RXTXRobot.MOTOR1, 2);
-        robot.attachMotor(RXTXRobot.MOTOR2, 3);
-  //      robot.resetEncodedMotorPosition(RXTXRobot.MOTOR1);
-  //      robot.resetEncodedMotorPosition(RXTXRobot.MOTOR2);
-        robot.runMotor(RXTXRobot.MOTOR1, 10, RXTXRobot.MOTOR2, 10, 10000);
-     
+        //motor1 always positive for forward, motor2 always negative
+        System.out.println("I tried");
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 300, 200, RXTXRobot.MOTOR2, -300, 200);  
+//        robot.runMotor(RXTXRobot.MOTOR1, 250, 2500);
+//        robot.runMotor(RXTXRobot.MOTOR2, 250, 2500);
     }
     
-    public static void runUntilBumper(){
-//        robot.attachMotor(RXTXRobot.MOTOR1, 2);
-//        robot.attachMotor(RXTXRobot.MOTOR2, 3);
-//        robot.resetEncodedMotorPosition(RXTXRobot.MOTOR1);
-//        robot.resetEncodedMotorPosition(RXTXRobot.MOTOR2);
-//        robot.runEncodedMotor(RXTXRobot.MOTOR1, 10, 0, RXTXRobot.MOTOR2, 10, 0);
-//        robot.refreshAnalogPins();
-//        while(robot.getAnalogPin(1).getValue() == 0)
-//        {
-//            
-//        }
-//        
-//        robot.runEncodedMotor(RXTXRobot.MOTOR1, 10, 1, RXTXRobot.MOTOR2, 10, 1);
+    public static void testBumpSensor() //0 off ~1023 on
+    {
+        while(true)
+        {
+            robot.refreshAnalogPins();
+            System.out.println(robot.getAnalogPin(1).getValue()); //TODO change this to whatever bump sensor is pinned to 
+        }
+        
+    }
+    
+    public static void runUntilBumper()
+    {
+        robot.runMotor(RXTXRobot.MOTOR1, 250, RXTXRobot.MOTOR2, -250, 0);
+        robot.refreshAnalogPins();
+        while(robot.getAnalogPin(1).getValue() == 0)
+        {
+            robot.refreshAnalogPins();
+        }
+        robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
  }  
 public static RXTXRobot robot;
 //Your main method, where your program starts
@@ -62,9 +78,12 @@ public static void main(String[] args) {
 
     //Connect to the arduino
     robot = new ArduinoNano();
-    robot.setPort("COM3");
+    robot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
     robot.connect();
     moveRobot3Meters();
+    //testBumpSensor();
+    //runUntilBumper();
+   // getPing();
     robot.close();
 //    //Get the average thermistor reading
 //    int thermistorReading = getThermistorReading();
