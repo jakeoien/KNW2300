@@ -7,6 +7,9 @@ import java.math.*;
 public class RobotTester 
 {
     final private static int PING_PIN = 12;
+    final static int TICKS_PER_METER = 200; //TODO not correct - calibrate
+    static char faceDirection = 'N';
+    final static int DANGER_ZONE = 40; //TODO decide
 
     public static void testPing()
     {
@@ -67,22 +70,61 @@ public class RobotTester
     {
         //motor1 always positive for forward, motor2 always negative
         System.out.println("I tried");
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 300, 200, RXTXRobot.MOTOR2, -300, 200);         
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 300, 1000, RXTXRobot.MOTOR2, -300, 1000);         
     }
     
     public static void turnLeft(){
         //turn left 90 degrees
+        //TODO fix these values
         robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 100, RXTXRobot.MOTOR2, 100, 100);
+        switch (faceDirection)
+        {
+            case 'N':
+                faceDirection = 'W';
+                break;
+            case 'W':
+                faceDirection = 'S';
+                break;
+            case 'S':
+                faceDirection = 'E';
+                break;
+            case 'E':
+                faceDirection = 'N';
+                break;
+            default:
+                faceDirection = 'W';
+                break;
+        }
     }
     
     public static void turnRight(){
         //turn right 90 degrees
+        //TODO fix these values
         robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 100, RXTXRobot.MOTOR2, 100, 100);
+        switch (faceDirection)
+        {
+            case 'N':
+                faceDirection = 'E';
+                break;
+            case 'E':
+                faceDirection = 'S';
+                break;
+            case 'S':
+                faceDirection = 'W';
+                break;
+            case 'W':
+                faceDirection = 'N';
+                break;
+            default:
+                faceDirection = 'E';
+                break;
+        }
     }
     
     public static void evasive(){
+        //TODO this is really rough
         turnLeft();
-        if(robot.getPing(PING_PIN) > 40) //TODO decide danger zone distance
+        if(robot.getPing(PING_PIN) > DANGER_ZONE) //TODO decide danger zone distance
         {
             moveRobot3Meters(); //this is unsafe right now, change to check distance
             turnRight();
@@ -91,7 +133,7 @@ public class RobotTester
         {
             turnRight();
             turnRight();
-            if(robot.getPing(PING_PIN) > 40) 
+            if(robot.getPing(PING_PIN) > DANGER_ZONE) 
             {
                 moveRobot3Meters();
                 turnLeft();
@@ -139,8 +181,79 @@ public class RobotTester
         
     }
     public static void moveToLocation(double[] coordinates){
+        //TODO figure out how long 1 meter is
+        //TODO north currently is positive latitude & meters to travel, check
+        //TODO west currently is positive longitude & meters to travel, check
+        double[] distanceToTravel = gpsToMeters(coordinates);
         
         
+        boolean motorsRunning = false;
+        //x direction
+        if(distanceToTravel[0] > 0){
+            while(faceDirection != 'W'){
+                turnLeft();
+            }
+        }
+        if(distanceToTravel[0] < 0){
+            while(faceDirection != 'E'){
+                turnRight();
+            }
+        }
+        
+        while(gpsToMeters(coordinates)[0] > 2)
+        {
+            if(robot.getPing(PING_PIN) < DANGER_ZONE)
+            {
+                stopMotors();
+                motorsRunning = false;
+                evasive();
+            }
+            else//if(robot.getPing(PING_PIN) > DANGER_ZONE)
+            {   
+                if(!motorsRunning)
+                {
+                    robot.runMotor(RXTXRobot.MOTOR1, 250, RXTXRobot.MOTOR2, 250, 0);
+                    motorsRunning = true;
+                }
+            }
+            robot.sleep(250);
+        }
+        
+        //y direction
+        
+        if(distanceToTravel[1] > 0){
+            while(faceDirection != 'N'){
+                turnLeft();
+            }
+        }
+        if(distanceToTravel[1] < 0){
+            while(faceDirection != 'S'){
+                turnRight();
+            }
+        }
+        
+        while(gpsToMeters(coordinates)[1] > 2)
+        {
+            if(robot.getPing(PING_PIN) < DANGER_ZONE)
+            {
+                stopMotors();
+                motorsRunning = false;
+                evasive();
+            }
+            else//if(robot.getPing(PING_PIN) > DANGER_ZONE)
+            {   
+                if(!motorsRunning)
+                {
+                    robot.runMotor(RXTXRobot.MOTOR1, 250, RXTXRobot.MOTOR2, 250, 0);
+                    motorsRunning = true;
+                }
+            }
+            robot.sleep(250);
+        }
+    }
+    public static void stopMotors()
+    {
+         robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
     }
 public static RXTXRobot robot;
 //Your main method, where your program starts
@@ -148,10 +261,10 @@ public static void main(String[] args) {
 
     //Connect to the arduino
     robot = new ArduinoNano();
-    robot.setPort("COM3");
+    robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
     robot.connect();
-    runServoMotor();
-    //moveRobot3Meters();
+    //runServoMotor();
+    moveRobot3Meters();
     //testBumpSensor();
     //runUntilBumper();
    // getPing();
