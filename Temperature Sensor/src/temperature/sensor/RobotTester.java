@@ -25,34 +25,37 @@ public class RobotTester
     {
         int sum = 0;
         int readingCount = 10;
-
+//
  //Read the analog pin values ten times, adding to sum each time
         for (int i = 0; i < readingCount; i++) 
         {
         //Refresh the analog pins so we get new readings
             robot.refreshAnalogPins();
-            int reading = robot.getAnalogPin(0).getValue();
+            int reading = robot.getAnalogPin(2).getValue();
             sum += reading;
         } //Return the average reading
         return sum / readingCount;
+//        while(true)
+//        {
+//            robot.refreshAnalogPins();
+//            System.out.println(robot.getAnalogPin(2).getValue());
+//        }
     }
 
-    public static void runServoMotor()
+    public static void runServoMotor() //servo starts at 90
     {
-//        Scanner userInput = new Scanner(System.in);
-//        System.out.println("Angle to turn servo to: ");
-//        int angle = userInput.nextInt();
-//        System.out.println("Moving servo to angle " + angle);
-        robot.attachServo(RXTXRobot.SERVO1, 9); 
-        while(robot.getAnalogPin(1).getValue() == 0)
-        {
-            robot.refreshAnalogPins();
-            robot.moveServo(RXTXRobot.SERVO1, 180);
-        }
-        System.out.println("finished");
+        robot.attachServo(RXTXRobot.SERVO1, 8); 
+//        while(robot.getAnalogPin(1).getValue() == 0)
+//        {
+//            robot.refreshAnalogPins();
+//            robot.moveServo(RXTXRobot.SERVO1, 180);
+//        }
+        robot.moveServo(RXTXRobot.SERVO1, 60);
+        robot.sleep(5000);
+//        robot.moveServo(RXTXRobot.SERVO1, 90);
     }
 
-    public static int conductivity() 
+    public static int getConductivityReading() 
     {
         int sum = 0;
         int readingCount = 10;
@@ -60,6 +63,7 @@ public class RobotTester
  //Read the analog pin values ten times, adding to sum each time
         for (int i = 0; i < readingCount; i++) 
         {
+            System.out.println("loop " + i);
             int reading = robot.getConductivity();
             sum += reading;
         } //Return the average reading
@@ -68,15 +72,15 @@ public class RobotTester
 
     public static void moveRobot3Meters()
     {
-        //motor1 always positive for forward, motor2 always negative
+        //motor1 always neg for forward, motor2 always pos
         System.out.println("I tried");
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 300, 1000, RXTXRobot.MOTOR2, -300, 1000);         
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -300, 270, RXTXRobot.MOTOR2, 300, 270);         
     }
     
     public static void turnLeft(){
         //turn left 90 degrees
         //TODO fix these values
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 100, RXTXRobot.MOTOR2, 100, 100);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, 80, RXTXRobot.MOTOR2, 200, 80);
         switch (faceDirection)
         {
             case 'N':
@@ -100,7 +104,7 @@ public class RobotTester
     public static void turnRight(){
         //turn right 90 degrees
         //TODO fix these values
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 100, RXTXRobot.MOTOR2, 100, 100);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -200, 80, RXTXRobot.MOTOR2, -200, 80);
         switch (faceDirection)
         {
             case 'N':
@@ -146,7 +150,7 @@ public class RobotTester
         }
     }
 
-    public static void testBumpSensor() //0 off ~1023 on
+    public static void testBumpSensor() //0 off ~1023 on, A1 is right sensor, A3 is left
     {
         while(true)
         {
@@ -154,6 +158,18 @@ public class RobotTester
             System.out.println(robot.getAnalogPin(1).getValue()); //TODO change this to whatever bump sensor is pinned to 
         }
 
+    }
+    
+    public static void testGPS()
+    {
+        SensorBot.attachGPS();
+
+        double[] coordinates = SensorBot.getGPSCoordinates();
+
+        System.out.println("Degrees latitude: " + coordinates[0]);
+        System.out.println("Minutes latitude: " + coordinates[1]);
+        System.out.println("Degrees longitude: " + coordinates[2]);
+        System.out.println("Minutes longitude: " + coordinates[3]);
     }
 
     public static void runUntilBumper()
@@ -256,25 +272,38 @@ public class RobotTester
          robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
     }
 public static RXTXRobot robot;
+public static RXTXRobot SensorBot;
 //Your main method, where your program starts
 public static void main(String[] args) {
 
     //Connect to the arduino
     robot = new ArduinoNano();
+    //GPSBot = new ArduinoNano();
     robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
+    //GPSBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
     robot.connect();
-    //runServoMotor();
-    moveRobot3Meters();
+    //GPSBot.connect();
+    
+    //testGPS();
+    
+    runServoMotor();
+    //moveRobot3Meters();
     //testBumpSensor();
+    //testGPS();
+    //turnLeft();
+    //turnRight();
+    //robot.runEncodedMotor(RXTXRobot.MOTOR1, -500, 1500, RXTXRobot.MOTOR2, 500, 1500);
     //runUntilBumper();
    // getPing();
-    robot.close();
-//    //Get the average thermistor reading
+    //System.out.println(getConductivityReading() + " conductivity reading");
+        //Get the average thermistor reading
 //    int thermistorReading = getThermistorReading();
 //
 //    //Print the results
 //    System.out.println("The probe read the value: " + thermistorReading);
 //    System.out.println("In volts: " + (thermistorReading * (5.0/1023.0)));
+    robot.close();
+    //GPSBot.close();
  }
 
 }
