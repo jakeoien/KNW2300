@@ -117,9 +117,16 @@ public class RobotTester
         turnLeft();
         if(SensorBot.getPing(PING_PIN) > DANGER_ZONE) //TODO decide danger zone distance
         {
-            moveRobot(); //this is unsafe right now, change to check distance
+            for(int i = 0; i<5; i++){
+                robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, 80, RXTXRobot.MOTOR2, 200, 80);
+                if(SensorBot.getPing(PING_PIN) > DANGER_ZONE){
+                    evasive();
+                }
+            }
+                //this is unsafe right now, change to check distance
             turnRight();
         }
+        /*
         else //way is blocked, try the other way
         {
             turnRight();
@@ -135,6 +142,7 @@ public class RobotTester
                 moveRobot(); // probably need to check if blocked now but w/e
             }
         }
+        */
     }
 
     public static void testBumpSensor() //0 off ~1023 on, A2 is left sensor, A3 is right
@@ -181,6 +189,12 @@ public class RobotTester
         //if issues, double precision errors
         
     }
+    
+    public static void printCoordinates(double[] c){
+        System.out.println("Longitude: " + c[0]);
+        System.out.println("Latitude: " + c[1]);
+    }
+    
     public static void moveToLocation(double[] coordinates){
         //TODO figure out how long 1 meter is
         //TODO north currently is positive latitude & meters to travel, check
@@ -257,6 +271,20 @@ public class RobotTester
          robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
     }
     
+    //TODO start motors, run indefinitely, keep checking GPS, when within 1 to 2 meters, stop motors
+    public static void lezGo(double latDeg, double latMin, double longDeg, double longMin){
+        double[] target = {latDeg, latMin, longDeg, longMin};
+        target = gpsToMeters(target);
+        double[] coordinates = gpsToMeters(SensorBot.getGPSCoordinates());
+        robot.runMotor(RXTXRobot.MOTOR1, -222, RXTXRobot.MOTOR2, 250, 0);
+        while(target[1]-coordinates[1] > 1 )
+        {
+            coordinates = gpsToMeters(SensorBot.getGPSCoordinates()); 
+            printCoordinates(coordinates);
+        }
+        robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
+    }
+    
     public static void setup()
     {
         robot = new ArduinoNano();
@@ -320,3 +348,5 @@ public static void main(String[] args) {
  }
 
 }
+
+
