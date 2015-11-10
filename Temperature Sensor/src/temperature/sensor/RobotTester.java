@@ -7,6 +7,9 @@ import java.math.*;
 public class RobotTester 
 {
     final private static int PING_PIN = 8;
+    final private static int BOOM_SERVO_PIN = 7;
+    final private static int CONDUCTIVITY_SERVO_PIN = 8;
+    
     final static int TICKS_PER_METER = 200; //TODO not correct - calibrate
     static char faceDirection = 'N';
     final static int DANGER_ZONE = 30; //TODO decide
@@ -44,36 +47,14 @@ public class RobotTester
     }
    
     public static void raiseArmAndGetTemp(){
-        runServoMotor();
+        robot.moveServo(RXTXRobot.SERVO2, 0);
         System.out.println("Temperature: " + getTemperature());
     }
-    
-    public static void runServoMotor() //servo starts at 90
-    {
-        robot.attachServo(RXTXRobot.SERVO1, 7); 
-//        while(robot.getAnalogPin(1).getValue() == 0)
-//        {
-//            robot.refreshAnalogPins();
-//            robot.moveServo(RXTXRobot.SERVO1, 180);
-//        }
-        robot.moveServo(RXTXRobot.SERVO1, 120);
-        robot.sleep(5000);
-//        robot.moveServo(RXTXRobot.SERVO1, 90);
-    }
 
-    public static int getConductivityReading() 
+    public static void getConductivityReading() 
     {
-        int sum = 0;
-        int readingCount = 10;
-
- //Read the analog pin values ten times, adding to sum each time
-        for (int i = 0; i < readingCount; i++) 
-        {
-            System.out.println("loop " + i);
-            int reading = SensorBot.getConductivity();
-            sum += reading;
-        } //Return the average reading
-        return sum / readingCount;
+        robot.moveServo(CONDUCTIVITY_SERVO_PIN, 0);
+        System.out.println(SensorBot.getConductivity());
     }
 
     public static void moveRobot()
@@ -168,8 +149,6 @@ public class RobotTester
     
     public static void testGPS()
     {
-        SensorBot.attachGPS();
-
         double[] coordinates = SensorBot.getGPSCoordinates();
 
         System.out.println("Degrees latitude: " + coordinates[0]);
@@ -277,18 +256,35 @@ public class RobotTester
     {
          robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
     }
+    
+    public static void setup()
+    {
+        robot = new ArduinoNano();
+        SensorBot = new ArduinoNano();
+        robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
+        SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
+        robot.connect();
+        SensorBot.connect();
+        
+        robot.attachServo(RXTXRobot.SERVO1, CONDUCTIVITY_SERVO_PIN);
+        robot.attachServo(RXTXRobot.SERVO2, BOOM_SERVO_PIN);
+        
+        SensorBot.attachGPS();
+        
+    }
+    
+    public static void closeBots()
+    {
+        robot.close();
+        SensorBot.close();
+    }
 public static RXTXRobot robot;
 public static RXTXRobot SensorBot;
 //Your main method, where your program starts
 public static void main(String[] args) {
-
-    //Connect to the arduino
-    robot = new ArduinoNano();
-    SensorBot = new ArduinoNano();
-    robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
-    SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
-    robot.connect();
-    SensorBot.connect();
+    setup();
+    robot.moveServo(RXTXRobot.SERVO2, 0);
+    robot.sleep(5000);
     //System.out.println("Robot read temperature of " + getTemperature() + " degrees C");
     //testGPS();
     //testPing();
@@ -298,7 +294,7 @@ public static void main(String[] args) {
     //turnLeft();
     //runServoMotor();
     //turnRight();
-    evasive();
+    //evasive();
     //System.out.println(robot.getEncodedMotorPosition(RXTXRobot.MOTOR1));
     //robot.runEncodedMotor(RXTXRobot.MOTOR1, -250, 2000, RXTXRobot.MOTOR2, 250, 2000);
     //robot.runEncodedMotor(RXTXRobot.MOTOR1, -125, 300, RXTXRobot.MOTOR2, 125, 300); //move 2 feet 
@@ -310,7 +306,7 @@ public static void main(String[] args) {
 //        evasive();
 //    }
     //raiseArmAndGetTemp();
-
+    
     
     //getPing();
     //System.out.println(SensorBot.getConductivity() + " conductivity reading");
@@ -320,8 +316,7 @@ public static void main(String[] args) {
 //    //Print the results
 //    System.out.println("The probe read the value: " + thermistorReading);
 //    System.out.println("In volts: " + (thermistorReading * (5.0/1023.0)));
-    robot.close();
-    SensorBot.close();
+    closeBots();
  }
 
 }
