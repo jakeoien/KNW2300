@@ -2,21 +2,26 @@
 package temperature.sensor;
 import rxtxrobot.*;
 import java.util.Scanner;
-import java.math.*;
 
 public class RobotTester 
 {
-    final private static int PING_PIN = 8;
+    final private static int PING_PIN = 9;
     final private static int BOOM_SERVO_PIN = 7;
+    final private static int LEFT_BUMP_PIN = 2;
+    final private static int RIGHT_BUMP_PIN = 3;
     final private static int CONDUCTIVITY_SERVO_PIN = 8;
+    final private static int COVERED_TEMP_PIN = 7;
+    final private static int UNCOVERED_TEMP_PIN = 0;
+    final private static int TICKS_PER_METER = 312;
+    final private static int TICKS_PER_YARD = (int) Math.floor(TICKS_PER_METER*1.09361);
+    //MOTOR1 is right motor2 is left
     
-    final static int TICKS_PER_METER = 200; //TODO not correct - calibrate
     static char faceDirection = 'N';
     final static int DANGER_ZONE = 30; //TODO decide
 
     public static void testPing()
     {
-        for (int x=0; x < 10; ++x) 
+        while(true)
             { 
                 //Read the ping sensor value, which is connected to pin 12 
                 System.out.println("Response: " + SensorBot.getPing(PING_PIN) + " cm"); 
@@ -24,10 +29,10 @@ public class RobotTester
             } 
     }
 
-    public static double getTemperature() 
+    public static double getTemperature(int pin) 
     {
         int sum = 0;
-        int readingCount = 10;
+        int readingCount = 20;
         SensorBot.refreshAnalogPins();
 
 //
@@ -35,7 +40,7 @@ public class RobotTester
         for (int i = 0; i < readingCount; i++) 
         {
         //Refresh the analog pins so we get new readings
-            int reading = SensorBot.getAnalogPin(0).getValue();
+            int reading = SensorBot.getAnalogPin(pin).getValue();
             System.out.println("Run " + i + " ADC Code: " + reading);
             
             sum += reading;
@@ -43,18 +48,32 @@ public class RobotTester
         } //Return the average reading
         sum /= readingCount;
         System.out.println("Average ADC Code: " + sum);
-        return ((sum-881.79003021148)/-5.83534743202417);
+        
+        if(pin == UNCOVERED_TEMP_PIN)
+            return ((sum-916.02880921895)/-9.38348271446863);
+        else
+            return ((sum-995.923354373309)/-11.4882777276826);
     }
    
-    public static void raiseArmAndGetTemp(){
-        robot.moveServo(RXTXRobot.SERVO2, 0);
-        System.out.println("Temperature: " + getTemperature());
+    public static void raiseArmAndGetTemp(int pin){
+        robot.moveServo(RXTXRobot.SERVO2, 180);
+        System.out.println("Temperature: " + getTemperature(pin));
+        robot.moveServo(RXTXRobot.SERVO2, 90);
     }
 
-    public static void getConductivityReading() 
+    public static double getConductivityReading() 
     {
-        robot.moveServo(CONDUCTIVITY_SERVO_PIN, 0);
-        System.out.println(SensorBot.getConductivity());
+        robot.moveServo(RXTXRobot.SERVO1, 0);
+        int sum = 0, numReads = 3;
+        for(int i = 0; i < numReads; ++i)
+        {
+            int reading = SensorBot.getConductivity();
+            System.out.println(reading + "conductivity read");
+            sum += reading;
+        }
+        sum /= numReads;
+        return ((sum-990.156255152698)/-13.6926312685339); //TODO fix
+        
     }
 
     public static void moveRobot()
@@ -66,8 +85,7 @@ public class RobotTester
     
     public static void turnLeft(){
         //turn left 90 degrees
-        //TODO fix these values
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -200, 85, RXTXRobot.MOTOR2, -200, 85);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -200, 140, RXTXRobot.MOTOR2, -200, 140);
         switch (faceDirection)
         {
             case 'N':
@@ -90,8 +108,7 @@ public class RobotTester
     
     public static void turnRight(){
         //turn right 90 degrees
-        //TODO fix these values
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, 80, RXTXRobot.MOTOR2, 200, 80);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, 120, RXTXRobot.MOTOR2, 200, 120);
         switch (faceDirection)
         {
             case 'N':
@@ -118,7 +135,7 @@ public class RobotTester
         if(SensorBot.getPing(PING_PIN) > DANGER_ZONE) //TODO decide danger zone distance
         {
             for(int i = 0; i<5; i++){
-                robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, 80, RXTXRobot.MOTOR2, 200, 80);
+                robot.runEncodedMotor(RXTXRobot.MOTOR1, -194, TICKS_PER_METER/5, RXTXRobot.MOTOR2, 200, TICKS_PER_METER/5);
                 if(SensorBot.getPing(PING_PIN) > DANGER_ZONE){
                     evasive();
                 }
@@ -145,12 +162,12 @@ public class RobotTester
         */
     }
 
-    public static void testBumpSensor() //0 off ~1023 on, A2 is left sensor, A3 is right
+    public static void testBumpSensor(int pinNum) //0 off ~1023 on, A2 is left sensor, A3 is right
     {
         while(true)
         {
             SensorBot.refreshAnalogPins();
-            System.out.println(SensorBot.getAnalogPin(3).getValue()); //TODO change this to whatever bump sensor is pinned to 
+            System.out.println(SensorBot.getAnalogPin(pinNum).getValue()); //TODO change this to whatever bump sensor is pinned to 
         }
 
     }
@@ -165,167 +182,180 @@ public class RobotTester
         System.out.println("Minutes longitude: " + coordinates[3]);
     }
 
-    public static void runUntilBumper()
+    public static void runUntilPing(int distanceToStop)
     {
-        robot.runMotor(RXTXRobot.MOTOR1, -222, RXTXRobot.MOTOR2, 250, 0);
+        stopMotors();
+        robot.runMotor(RXTXRobot.MOTOR1, -75, RXTXRobot.MOTOR2, 77, 0);
+        int ping = SensorBot.getPing(PING_PIN);
+        while(ping > distanceToStop || ping < 7)
+        {
+            ping = SensorBot.getPing(PING_PIN);
+        }
+        stopMotors();
+    }
+    
+    public static void runUntilBumper(int speedLeft, int speedRight)
+    {
+        robot.runMotor(RXTXRobot.MOTOR1, 0-speedLeft, RXTXRobot.MOTOR2, speedRight, 0);
         SensorBot.refreshAnalogPins();
-        while(SensorBot.getAnalogPin(2).getValue() < 500 && SensorBot.getAnalogPin(3).getValue() < 500)
+        int left = SensorBot.getAnalogPin(2).getValue(), right = SensorBot.getAnalogPin(3).getValue();
+        while(left < 500 && right < 500)
         {
             SensorBot.refreshAnalogPins();
+            left = SensorBot.getAnalogPin(2).getValue();
+            right = SensorBot.getAnalogPin(3).getValue();
         }
         robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
  }  
-    
-    public static double[] gpsToMeters(double[] c){
-        double[] startLocation = robot.getGPSCoordinates(); //starting location before moving
-        double startLat = (Math.abs(startLocation[0]) + (startLocation[1] / 60.0)); //starting latitude in decimal degrees
-        double startLong = (Math.abs(startLocation[2]) + (startLocation[3] / 60.0)); //starting longitude in decimal degrees
-        double endLat = (Math.abs(c[0]) + (c[1] / 60.0)); //endling latitude in decimal degrees
-        double endLong = (Math.abs(c[2]) + (c[3] / 60.0)); //ending longitude in decimal degrees
-        double y = (endLat - startLat) * 110901.46; //vertical distance in meters
-        double x = (endLong - startLong) * 110901.46; //horizontal distance in meters
-        double[] ans = {x,y}; //array of vertical and horizontal distances displayed in meters
-        return ans;
-        //if issues, double precision errors
-        
-    }
-    
-    public static void printCoordinates(double[] c){
-        System.out.println("Longitude: " + c[0]);
-        System.out.println("Latitude: " + c[1]);
-    }
-    
-    public static void moveToLocation(double[] coordinates){
-        //TODO figure out how long 1 meter is
-        //TODO north currently is positive latitude & meters to travel, check
-        //TODO west currently is positive longitude & meters to travel, check
-        double[] distanceToTravel = gpsToMeters(coordinates);
-        
-        
-        boolean motorsRunning = false;
-        //x direction
-        if(distanceToTravel[0] > 0){
-            while(faceDirection != 'W'){
-                turnLeft();
-            }
-        }
-        if(distanceToTravel[0] < 0){
-            while(faceDirection != 'E'){
-                turnRight();
-            }
-        }
-        
-        while(gpsToMeters(coordinates)[0] > 2)
-        {
-            if(robot.getPing(PING_PIN) < DANGER_ZONE)
-            {
-                stopMotors();
-                motorsRunning = false;
-                evasive();
-            }
-            else//if(robot.getPing(PING_PIN) > DANGER_ZONE)
-            {   
-                if(!motorsRunning)
-                {
-                    robot.runMotor(RXTXRobot.MOTOR1, 250, RXTXRobot.MOTOR2, 250, 0);
-                    motorsRunning = true;
-                }
-            }
-            robot.sleep(250);
-        }
-        
-        //y direction
-        
-        if(distanceToTravel[1] > 0){
-            while(faceDirection != 'N'){
-                turnLeft();
-            }
-        }
-        if(distanceToTravel[1] < 0){
-            while(faceDirection != 'S'){
-                turnRight();
-            }
-        }
-        
-        while(gpsToMeters(coordinates)[1] > 2)
-        {
-            if(robot.getPing(PING_PIN) < DANGER_ZONE)
-            {
-                stopMotors();
-                motorsRunning = false;
-                evasive();
-            }
-            else//if(robot.getPing(PING_PIN) > DANGER_ZONE)
-            {   
-                if(!motorsRunning)
-                {
-                    robot.runMotor(RXTXRobot.MOTOR1, 250, RXTXRobot.MOTOR2, 250, 0);
-                    motorsRunning = true;
-                }
-            }
-            robot.sleep(250);
-        }
-    }
     public static void stopMotors()
     {
          robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
     }
     
-    //TODO start motors, run indefinitely, keep checking GPS, when within 1 to 2 meters, stop motors
-    public static void lezGo(double latDeg, double latMin, double longDeg, double longMin){
-        double[] target = {latDeg, latMin, longDeg, longMin};
-        target = gpsToMeters(target);
-        double[] coordinates = gpsToMeters(SensorBot.getGPSCoordinates());
-        robot.runMotor(RXTXRobot.MOTOR1, -222, RXTXRobot.MOTOR2, 250, 0);
-        while(target[1]-coordinates[1] > 1 )
-        {
-            coordinates = gpsToMeters(SensorBot.getGPSCoordinates()); 
-            printCoordinates(coordinates);
-        }
-        robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
-    }
-    
-    public static void setup()
+    public static void setup(boolean setupRobot, boolean setupSensorBot)
     {
-        robot = new ArduinoNano();
-        SensorBot = new ArduinoNano();
-        robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
-        SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
-        robot.connect();
-        SensorBot.connect();
+        if(setupRobot)
+        {
+            robot = new ArduinoNano();
+            robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
+            robot.connect();
+            robot.attachServo(RXTXRobot.SERVO1, CONDUCTIVITY_SERVO_PIN);
+            robot.attachServo(RXTXRobot.SERVO2, BOOM_SERVO_PIN);
+            robot.moveServo(RXTXRobot.SERVO2, 75);
+        }
         
-        robot.attachServo(RXTXRobot.SERVO1, CONDUCTIVITY_SERVO_PIN);
-        robot.attachServo(RXTXRobot.SERVO2, BOOM_SERVO_PIN);
-        
-        SensorBot.attachGPS();
+        if(setupSensorBot)
+        {
+            SensorBot = new ArduinoNano();
+            SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
+            SensorBot.connect();
+            SensorBot.attachGPS();
+        }
         
     }
     
     public static void closeBots()
     {
-        robot.close();
-        SensorBot.close();
+        if(robot != null)
+            robot.close();
+        if(SensorBot != null)
+            SensorBot.close();
+    }
+    
+    public static void goInCircle()
+    {
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -186, TICKS_PER_METER, RXTXRobot.MOTOR2, 194, TICKS_PER_METER);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -186, TICKS_PER_METER, RXTXRobot.MOTOR2, 194, TICKS_PER_METER);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -186, TICKS_PER_METER, RXTXRobot.MOTOR2, 194, TICKS_PER_METER);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -186, TICKS_PER_METER, RXTXRobot.MOTOR2, 194, TICKS_PER_METER);
+        turnLeft(); 
+    }
+    
+    public static void doSandboxTask()
+    {
+        runUntilBumper(130, 130);
+        System.out.println(getConductivityReading() + "% water");
+    }
+    
+    public static void startInQuad1()
+    {
+        runUntilPing(25);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+260, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+260);
+        turnRight();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
+        goUpRampAndGetTemp();
+        turnLeft();
+        runUntilPing(25);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
+        turnRight();
+        doSandboxTask();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 50, RXTXRobot.MOTOR2, -100, 50);
+        turnRight();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+260, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+260);
+        runUntilPing(25);
+    }
+    
+    public static void startInQuad2()
+    {
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+210, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+210);
+        stopMotors();
+        turnRight();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
+        goUpRampAndGetTemp();
+        doSandboxTask();
+       
+    }
+    
+    public static void startInQuad3()
+    {
+        robot.runMotor(RXTXRobot.MOTOR1, -100, RXTXRobot.MOTOR2, 100, 0);
+        runUntilBumper(130,130);
+        turnRight();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+150, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+150);
+        turnRight();
+        doSandboxTask();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 50, 50, RXTXRobot.MOTOR2, -50, 50);
+        turnLeft();
+        runUntilBumper(130,130);
+        turnRight();
+        runUntilBumper(130,130);
+    }
+    
+    public static void startInQuad4()
+    {
+        runUntilPing(25);
+        turnRight();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+300, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+300);
+        turnLeft();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -142, 150+75, RXTXRobot.MOTOR2, 150, 150+75);
+        turnLeft();
+        runUntilPing(25);
+        turnRight();
+        runUntilPing(40);
+        turnRight();
+        startInQuad3();
+    }
+    
+    public static void goUpRampAndGetTemp()
+    {
+        robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, 200, 3500);
+        stopMotors();
+        raiseArmAndGetTemp(COVERED_TEMP_PIN);
+        robot.runMotor(RXTXRobot.MOTOR1, -190, RXTXRobot.MOTOR2, 210, 3000); 
     }
 public static RXTXRobot robot;
 public static RXTXRobot SensorBot;
 //Your main method, where your program starts
 public static void main(String[] args) {
-    setup();
-    robot.moveServo(RXTXRobot.SERVO2, 0);
-    robot.sleep(5000);
-    //System.out.println("Robot read temperature of " + getTemperature() + " degrees C");
-    //testGPS();
+    setup(true, true);
+    startInQuad2();
     //testPing();
-    //raiseArmAndGetTemp();
-    //testBumpSensor();
-    //testGPS();
+    //runUntilPing(25);
+    //goUpRampAndGetTemp();
+    //runUntilBumper(222, 243);
+    //goInCircle();
     //turnLeft();
-    //runServoMotor();
+    //robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, (int)(TICKS_PER_YARD*2)+300, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+300);
+    //goUpRampAndGetTemp();
+    //System.out.println(getConductivityReading());
+    //startInQuad3();
     //turnRight();
+    //raiseArmAndGetTemp(COVERED_TEMP_PIN);
+    //System.out.println(getTemperature(UNCOVERED_TEMP_PIN));
+    //System.out.println(getTemperature(COVERED_TEMP_PIN));
+    //robot.moveServo(RXTXRobot.SERVO2, 0);
+    //doSandboxTask();
+    //System.out.println("Robot read temperature of " + getTemperature() + " degrees C");
+    //startInQuad3();
     //evasive();
     //System.out.println(robot.getEncodedMotorPosition(RXTXRobot.MOTOR1));
     //robot.runEncodedMotor(RXTXRobot.MOTOR1, -250, 2000, RXTXRobot.MOTOR2, 250, 2000);
-    //robot.runEncodedMotor(RXTXRobot.MOTOR1, -125, 300, RXTXRobot.MOTOR2, 125, 300); //move 2 feet 
+    //robot.runEncodedMotor(RXTXRobot.MOTOR1, -186, 310, RXTXRobot.MOTOR2, 194, 310); //move 1 meter 
     //runUntilBumper();
 //    robot.runMotor(RXTXRobot.MOTOR1, 200, RXTXRobot.MOTOR2, 200, 0);
 //    if(SensorBot.getPing(PING_PIN) < DANGER_ZONE)
@@ -333,7 +363,6 @@ public static void main(String[] args) {
 //        robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
 //        evasive();
 //    }
-    //raiseArmAndGetTemp();
     
     
     //getPing();
