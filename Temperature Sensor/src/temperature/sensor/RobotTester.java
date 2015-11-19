@@ -231,7 +231,7 @@ public class RobotTester
         if(setupRobot)
         {
             robot = new ArduinoNano();
-            robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410
+            robot.setPort("/dev/tty.wch ch341 USB=>RS232 1410"); ///dev/tty.wch ch341 USB=>RS232 1410       COMM3
             robot.connect();
             robot.attachServo(RXTXRobot.SERVO1, CONDUCTIVITY_SERVO_PIN);
             robot.attachServo(RXTXRobot.SERVO2, BOOM_SERVO_PIN);
@@ -241,7 +241,7 @@ public class RobotTester
         if(setupSensorBot)
         {
             SensorBot = new ArduinoNano();
-            SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1450");
+            SensorBot.setPort("/dev/tty.wch ch341 USB=>RS232 1410");   
             SensorBot.connect();
             SensorBot.attachGPS();
         }
@@ -353,8 +353,10 @@ public class RobotTester
         
         doSandboxTask();
         stopMotors();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 120, 50, RXTXRobot.MOTOR2, -120, 50); //back up slightly
+        //robot.runEncodedMotor(RXTXRobot.MOTOR1, 120, 50, RXTXRobot.MOTOR2, -120, 50); //back up slightly
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 120, 1775, RXTXRobot.MOTOR2, -120, 1775);
         //TODO BACK THE FUCK UP
+        /*
         robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, -200, 0); //turn around
         SensorBot.sleep(800);
         frontPing = SensorBot.getPing(FRONT_PING_PIN);
@@ -367,7 +369,8 @@ public class RobotTester
         stopMotors();
         
         runUntilPing(126, 130, 60); //approach ramp
-        goUpRampAndGetTemp(); //obv, goes down north side CHANGE THIS TO WORK WITH BACKING UP
+        */
+        goUpRampAndGetTempBackwards(); //obv, goes down north side CHANGE THIS TO WORK WITH BACKING UP
         
         leftPing = SensorBot.getPing(RIGHT_PING_PIN); //go until even with charging
         robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 0);
@@ -444,6 +447,15 @@ public class RobotTester
         raiseArmAndGetTemp(COVERED_TEMP_PIN);
         robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, 200, 3000); 
     }
+    
+    public static void goUpRampAndGetTempBackwards()
+    {
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 200, TICKS_PER_YARD, RXTXRobot.MOTOR2, -200, TICKS_PER_YARD);
+        stopMotors();
+        raiseArmAndGetTemp(COVERED_TEMP_PIN);
+        robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, 200, 300); 
+    }
+        
 public static RXTXRobot robot;
 public static RXTXRobot SensorBot;
 //Your main method, where your program starts
@@ -460,7 +472,7 @@ public static void main(String[] args) {
     //robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, (int)(TICKS_PER_YARD*2)+300, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+300);
     //goUpRampAndGetTemp();
     //System.out.println(getConductivityReading());
-    //startInQuad3();
+    startInQuad3();
     //turnRight();
     //raiseArmAndGetTemp(COVERED_TEMP_PIN);
     //System.out.println(getTemperature(UNCOVERED_TEMP_PIN));
