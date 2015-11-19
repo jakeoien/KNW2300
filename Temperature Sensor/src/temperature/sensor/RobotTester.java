@@ -5,7 +5,9 @@ import java.util.Scanner;
 
 public class RobotTester 
 {
-    final private static int PING_PIN = 9;
+    final private static int RIGHT_PING_PIN = 7;
+    final private static int LEFT_PING_PIN = 9;
+    final private static int FRONT_PING_PIN = 8;
     final private static int BOOM_SERVO_PIN = 7;
     final private static int LEFT_BUMP_PIN = 2;
     final private static int RIGHT_BUMP_PIN = 3;
@@ -19,12 +21,12 @@ public class RobotTester
     static char faceDirection = 'N';
     final static int DANGER_ZONE = 30; //TODO decide
 
-    public static void testPing()
+    public static void testPing(int pin)
     {
         while(true)
             { 
                 //Read the ping sensor value, which is connected to pin 12 
-                System.out.println("Response: " + SensorBot.getPing(PING_PIN) + " cm"); 
+                System.out.println("Response: " + SensorBot.getPing(pin) + " cm"); 
                 SensorBot.sleep(300); 
             } 
     }
@@ -64,6 +66,14 @@ public class RobotTester
     public static double getConductivityReading() 
     {
         robot.moveServo(RXTXRobot.SERVO1, 0);
+        robot.sleep(1500);
+        robot.moveServo(RXTXRobot.SERVO1, 90);
+        robot.sleep(1500);
+        robot.moveServo(RXTXRobot.SERVO1, 0);
+        robot.sleep(1500);
+        robot.moveServo(RXTXRobot.SERVO1, 90);
+        robot.sleep(1500);
+        robot.moveServo(RXTXRobot.SERVO1, 0);
         int sum = 0, numReads = 3;
         for(int i = 0; i < numReads; ++i)
         {
@@ -72,7 +82,9 @@ public class RobotTester
             sum += reading;
         }
         sum /= numReads;
-        return ((sum-990.156255152698)/-13.6926312685339); //TODO fix
+        robot.moveServo(RXTXRobot.SERVO1, 90);
+        return ((sum-990.156255152698)/-13.6926312685339);
+        
         
     }
 
@@ -132,11 +144,11 @@ public class RobotTester
     public static void evasive(){
         //TODO this is really rough
         turnLeft();
-        if(SensorBot.getPing(PING_PIN) > DANGER_ZONE) //TODO decide danger zone distance
+        if(SensorBot.getPing(FRONT_PING_PIN) > DANGER_ZONE) //TODO decide danger zone distance
         {
             for(int i = 0; i<5; i++){
                 robot.runEncodedMotor(RXTXRobot.MOTOR1, -194, TICKS_PER_METER/5, RXTXRobot.MOTOR2, 200, TICKS_PER_METER/5);
-                if(SensorBot.getPing(PING_PIN) > DANGER_ZONE){
+                if(SensorBot.getPing(FRONT_PING_PIN) > DANGER_ZONE){
                     evasive();
                 }
             }
@@ -182,30 +194,30 @@ public class RobotTester
         System.out.println("Minutes longitude: " + coordinates[3]);
     }
 
-    public static void runUntilPing(int distanceToStop)
+    public static void runUntilPing(int speedRight, int speedLeft, int distanceToStop)
     {
         stopMotors();
-        robot.runMotor(RXTXRobot.MOTOR1, -75, RXTXRobot.MOTOR2, 77, 0);
-        int ping = SensorBot.getPing(PING_PIN);
+        robot.runMotor(RXTXRobot.MOTOR1, 0-speedRight, RXTXRobot.MOTOR2, speedLeft, 0);
+        int ping = SensorBot.getPing(FRONT_PING_PIN);
         while(ping > distanceToStop || ping < 7)
         {
-            ping = SensorBot.getPing(PING_PIN);
+            ping = SensorBot.getPing(FRONT_PING_PIN);
         }
         stopMotors();
     }
     
-    public static void runUntilBumper(int speedLeft, int speedRight)
+    public static void runUntilBumper(int speedRight, int speedLeft)
     {
-        robot.runMotor(RXTXRobot.MOTOR1, 0-speedLeft, RXTXRobot.MOTOR2, speedRight, 0);
+        robot.runMotor(RXTXRobot.MOTOR1, 0-speedRight, RXTXRobot.MOTOR2, speedLeft, 0);
         SensorBot.refreshAnalogPins();
-        int left = SensorBot.getAnalogPin(2).getValue(), right = SensorBot.getAnalogPin(3).getValue();
+        int left = SensorBot.getAnalogPin(LEFT_BUMP_PIN).getValue(), right = SensorBot.getAnalogPin(RIGHT_BUMP_PIN).getValue();
         while(left < 500 && right < 500)
         {
             SensorBot.refreshAnalogPins();
-            left = SensorBot.getAnalogPin(2).getValue();
-            right = SensorBot.getAnalogPin(3).getValue();
+            left = SensorBot.getAnalogPin(LEFT_BUMP_PIN).getValue();
+            right = SensorBot.getAnalogPin(RIGHT_BUMP_PIN).getValue();
         }
-        robot.runMotor(RXTXRobot.MOTOR1, 0, RXTXRobot.MOTOR2, 0, 0);
+        stopMotors();
  }  
     public static void stopMotors()
     {
@@ -260,63 +272,162 @@ public class RobotTester
         System.out.println(getConductivityReading() + "% water");
     }
     
-    public static void startInQuad1()
+    public static void startInQuad1() //rock
     {
-        runUntilPing(25);
-        turnLeft();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+260, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+260);
+        runUntilPing(120,120,25);
         turnRight();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
-        goUpRampAndGetTemp();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, (int)(TICKS_PER_YARD*2)+260, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+260);
         turnLeft();
-        runUntilPing(25);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD); //move past tip of penis fix vals
+        
+        //go
         turnLeft();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
+        runUntilPing(120,120,25);
         turnRight();
-        doSandboxTask();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 100, 50, RXTXRobot.MOTOR2, -100, 50);
+        
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 0); //run to end of wall, and a bit more
+        int leftPing = SensorBot.getPing(LEFT_PING_PIN);
+        while(leftPing < 25)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 1000);
+        
+        turnLeft();
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 1000);
+        turnLeft();
+        
+        runUntilPing(126,130,40);
         turnRight();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+260, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+260);
-        runUntilPing(25);
+        startInQuad4();
     }
     
-    public static void startInQuad2()
+    public static void startInQuad2() //ramp
     {
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+210, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+210);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, (int)(TICKS_PER_YARD*2)+210, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+210);
         stopMotors();
         turnRight();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, TICKS_PER_YARD, RXTXRobot.MOTOR2, 150, TICKS_PER_YARD);
         goUpRampAndGetTemp();
         doSandboxTask();
        
     }
     
-    public static void startInQuad3()
+    public static void startInQuad3()//sand
     {
-        robot.runMotor(RXTXRobot.MOTOR1, -100, RXTXRobot.MOTOR2, 100, 0);
-        runUntilBumper(130,130);
-        turnRight();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+150, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+150);
-        turnRight();
+        runUntilPing(124,130,25); //run into wall
+        
+        robot.runMotor(RXTXRobot.MOTOR1, 100, RXTXRobot.MOTOR2, 100, 0); //turn right next to wall
+        int leftPing = SensorBot.getPing(LEFT_PING_PIN);
+        while(leftPing > 20 && leftPing < 17)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 0); //run to end of wall, and a bit more
+        leftPing = SensorBot.getPing(LEFT_PING_PIN);
+        while(leftPing < 25)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 1000);
+        
+        robot.runMotor(RXTXRobot.MOTOR1, 100, RXTXRobot.MOTOR2, 100, 0); //turn right
+        int frontPing = SensorBot.getPing(FRONT_PING_PIN); 
+        while(frontPing > 181 || frontPing < 169 )
+        {
+            frontPing = SensorBot.getPing(FRONT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        
         doSandboxTask();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, 50, 50, RXTXRobot.MOTOR2, -50, 50);
-        turnLeft();
-        runUntilBumper(130,130);
-        turnRight();
-        runUntilBumper(130,130);
+        stopMotors();
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, 120, 50, RXTXRobot.MOTOR2, -120, 50); //back up slightly
+        
+        robot.runMotor(RXTXRobot.MOTOR1, -100, RXTXRobot.MOTOR2, -100, 0); //turn around
+        frontPing = SensorBot.getPing(FRONT_PING_PIN);
+        while(frontPing > 300)
+        {
+            frontPing = SensorBot.getPing(FRONT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        SensorBot.sleep(500);
+        stopMotors();
+        
+        runUntilPing(126, 130, 60); //approach ramp
+        goUpRampAndGetTemp(); //obv, goes down north side
+        
+        leftPing = SensorBot.getPing(RIGHT_PING_PIN); //go until even with charging
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 0);
+        while(leftPing > 200 || leftPing < 8)
+        {
+            leftPing = SensorBot.getPing(RIGHT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        
+        robot.runMotor(RXTXRobot.MOTOR1, -100, RXTXRobot.MOTOR2, -100, 0); //turn left
+        frontPing = SensorBot.getPing(FRONT_PING_PIN);
+        while(frontPing > 150 || leftPing < 8)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        SensorBot.sleep(500);
+        stopMotors();
+        
+        runUntilPing(126,130,40); //go to charging station
+        
+              
     }
     
-    public static void startInQuad4()
+    public static void startInQuad4() //ball
     {
-        runUntilPing(25);
-        turnRight();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -140, (int)(TICKS_PER_YARD*2)+300, RXTXRobot.MOTOR2, 150, (int)(TICKS_PER_YARD*2)+300);
+        runUntilPing(120,120,25);//go to wall
+        
+        robot.runMotor(RXTXRobot.MOTOR1, 100, RXTXRobot.MOTOR2, 100, 0); //turn right next to wall
+        int leftPing = SensorBot.getPing(LEFT_PING_PIN);
+        while(leftPing > 20 && leftPing < 17)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 0); //run to end of wall, and a bit more
+        leftPing = SensorBot.getPing(LEFT_PING_PIN);
+        while(leftPing < 25)
+        {
+            leftPing = SensorBot.getPing(LEFT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        robot.runMotor(RXTXRobot.MOTOR1, -96, RXTXRobot.MOTOR2, 100, 500);
+        
+        
         turnLeft();
-        robot.runEncodedMotor(RXTXRobot.MOTOR1, -142, 150+75, RXTXRobot.MOTOR2, 150, 150+75);
+        robot.runEncodedMotor(RXTXRobot.MOTOR1, -150, 150+75, RXTXRobot.MOTOR2, 150, 150+75);
         turnLeft();
-        runUntilPing(25);
-        turnRight();
-        runUntilPing(40);
+        runUntilPing(120,120,25);
+        
+        
+        robot.runMotor(RXTXRobot.MOTOR1, 100, RXTXRobot.MOTOR2, 100, 0); //turn right
+        int rightPing = SensorBot.getPing(RIGHT_PING_PIN);
+        while(rightPing > 20 || rightPing < 17 )
+        {
+            rightPing = SensorBot.getPing(FRONT_PING_PIN);
+            SensorBot.sleep(50);
+        }
+        stopMotors();
+        
+        runUntilPing(120,120,40);
         turnRight();
         startInQuad3();
     }
@@ -326,15 +437,16 @@ public class RobotTester
         robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, 200, 3500);
         stopMotors();
         raiseArmAndGetTemp(COVERED_TEMP_PIN);
-        robot.runMotor(RXTXRobot.MOTOR1, -190, RXTXRobot.MOTOR2, 210, 3000); 
+        robot.runMotor(RXTXRobot.MOTOR1, -200, RXTXRobot.MOTOR2, 200, 3000); 
     }
 public static RXTXRobot robot;
 public static RXTXRobot SensorBot;
 //Your main method, where your program starts
 public static void main(String[] args) {
     setup(true, true);
-    startInQuad2();
-    //testPing();
+    testPing(LEFT_PING_PIN);
+    //startInQuad2();
+    //doSandboxTask();
     //runUntilPing(25);
     //goUpRampAndGetTemp();
     //runUntilBumper(222, 243);
